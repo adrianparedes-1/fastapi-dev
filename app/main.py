@@ -1,4 +1,3 @@
-from multiprocessing import synchronize
 from fastapi import FastAPI, HTTPException, status, Response, Depends
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -140,7 +139,7 @@ def update_post (id: int, updated_post: schemas.Post, db: Session = Depends(get_
     #otherwise, update post with information entered in the path parameter
     
     update_data = updated_post.model_dump(exclude_unset=True)
-    update_data.pop("id", None) 
+    update_data.pop("id", None) #remove id from dict created in previous statement
     post_query.update(update_data, synchronize_session=False)
     db.commit()
     
