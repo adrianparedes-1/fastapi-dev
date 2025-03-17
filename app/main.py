@@ -67,7 +67,7 @@ def create_post(post: schemas.Post, db: Session = Depends(get_db)):
     
 
     # SQLAlchemy query
-    new_post = models.Post(**post.model_dump())
+    new_post = models.Post(**post.model_dump()) #this is equivalent to writing -- models.Post(title=post.title, content=post.content, published=post.published)
     # print(new_post)
     db.add(new_post)
     db.commit()
@@ -108,7 +108,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     
     #SQLAlchemy query
     deleted_post = db.query(models.Post).filter(id == models.Post.id) #start db instance and query db based on id
-    print(deleted_post)
+    # print(deleted_post)
     if deleted_post.first() == None: #if the deleted post was not found, then throw an error
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} does not exist")
 
@@ -119,13 +119,29 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/posts/{id}")
-def update_post (id: int, post: schemas.Post):
-    
-    cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""", 
-                    (post.title, post.content, post.published, id,))
-    updated_post = cursor.fetchone()
-    conn.commit()
+def update_post (id: int, updated_post: schemas.Post, db: Session = Depends(get_db)):
+    # Raw SQL Query
+    # cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""", 
+    #                 (post.title, post.content, post.published, id,))
+    # updated_post = cursor.fetchone()
+    # conn.commit()
 
-    if updated_post == None:
+    # SQLAlchemy Query
+    # to update, we want to first fetch the post with the id corresponding to the argument, then update that id with the information from post
+    
+    #create db instance and query per id
+    post_query = db.query(models.Post).filter(id == models.Post.id)
+    
+    post = post_query.first()
+    
+    if post == None: #if post with that id is not found, throw error
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} does not exist")
-    return {"data": updated_post}
+    
+    #otherwise, update post with information entered in the path parameter
+    
+    update_data = updated_post.model_dump(exclude_unset=True)
+    update_data.pop("id", None) 
+    post_query.update(update_data, synchronize_session=False)
+    db.commit()
+    
+    return post_query.first()
